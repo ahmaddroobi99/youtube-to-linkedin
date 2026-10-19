@@ -19,6 +19,10 @@ OLLAMA_URL = "http://localhost:11434/api/generate"
 SEARXNG_URL = "http://localhost:8888/search"
 PORT = 8000
 
+# Set this to your browser name if you want automatic cookies
+# Examples: "chrome", "firefox", "edge", "brave", "opera", "safari"
+COOKIES_FROM_BROWSER = None  # change to "chrome" etc. to enable
+
 
 def get_youtube_info(url: str) -> dict:
     """Extract channel info using yt-dlp with better error reporting."""
@@ -30,6 +34,9 @@ def get_youtube_info(url: str) -> dict:
         "--print",
         "%(channel)s|||%(uploader)s|||%(channel_id)s|||%(description)s|||%(webpage_url)s",
     ]
+
+    if COOKIES_FROM_BROWSER:
+        base_cmd.extend(["--cookies-from-browser", COOKIES_FROM_BROWSER])
 
     # Try with a few common workarounds for YouTube bot detection
     attempts = [
@@ -58,10 +65,15 @@ def get_youtube_info(url: str) -> dict:
         except Exception as e:
             last_error = str(e)
 
+    hint = (
+        "YouTube bot check detected. Fix: 1) pip install -U yt-dlp  "
+        "2) Install Deno  3) In server.py set COOKIES_FROM_BROWSER = \"chrome\" "
+        "(or firefox/edge) and restart the server while logged into YouTube in that browser."
+    )
     return {
-        "error": "yt-dlp failed. Try updating it first: pip install -U yt-dlp",
+        "error": "yt-dlp failed (likely YouTube bot detection)",
         "details": last_error,
-        "hint": "Common fixes: 1) pip install -U yt-dlp  2) Install Deno (JS runtime)  3) Try again later (rate limit)"
+        "hint": hint,
     }
 
 
@@ -205,4 +217,8 @@ class Handler(BaseHTTPRequestHandler):
 if __name__ == "__main__":
     print(f"Serving on http://localhost:{PORT}")
     print("Open the URL in your browser and paste a YouTube link.")
+    if COOKIES_FROM_BROWSER:
+        print(f"Using cookies from browser: {COOKIES_FROM_BROWSER}")
+    else:
+        print("Tip: if you get bot detection, set COOKIES_FROM_BROWSER = \"chrome\" in server.py")
     HTTPServer(("", PORT), Handler).serve_forever()

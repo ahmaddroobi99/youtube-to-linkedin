@@ -264,25 +264,33 @@ Open **http://localhost:8000**, paste a YouTube URL, and click **Extract**.
 
 ## Troubleshooting
 
-### `yt-dlp` returned non-zero exit status 1
+### “Sign in to confirm you’re not a bot”
 
-This is the most common error. YouTube changes often.
+YouTube is blocking the automated request. The reliable fix is cookies from a logged-in browser.
 
-**Fix in order:**
+**Fix:**
 
-1. Update yt-dlp:
+1. Update yt-dlp and install Deno:
    ```bash
    pip install -U yt-dlp
-   yt-dlp --version
-   ```
-2. Install a JS runtime (required for full YouTube support):
-   ```bash
    curl -fsSL https://deno.land/install.sh | sh
    ```
-3. Restart the server and try again.
-4. If it still fails, the video may be restricted, age-gated, or rate-limited. Try a different video or wait a few minutes.
+2. Open `server.py` and change this line:
+   ```python
+   COOKIES_FROM_BROWSER = None
+   ```
+   to one of:
+   ```python
+   COOKIES_FROM_BROWSER = "chrome"    # or "firefox", "edge", "brave"
+   ```
+3. Make sure you are logged into YouTube in that browser.
+4. Restart the server:
+   ```bash
+   python server.py
+   ```
+5. Try the URL again.
 
-The web UI now returns a more detailed error with a `hint` field when yt-dlp fails.
+You can also pass cookies manually with a cookies.txt file (see the [yt-dlp FAQ](https://github.com/yt-dlp/yt-dlp/wiki/FAQ#how-do-i-pass-cookies-to-yt-dlp)).
 
 ---
 
@@ -310,6 +318,7 @@ See [DEPLOY.md](DEPLOY.md) for more detail.
 - First build is slow (Chromium download).
 - Free tiers sleep; first request after idle is slower.
 - Ollama and SearXNG remain optional and local.
+- Cookie-based auth is local-only (browser cookies do not exist in a remote container).
 
 ---
 
@@ -319,7 +328,7 @@ See [DEPLOY.md](DEPLOY.md) for more detail.
 - Direct LinkedIn scraping without a logged-in session is unreliable; the tool prefers extracting the URL from the creator’s own pages.
 - Common channel names produce noisier search results.
 - Heavy anti-bot pages may block Playwright.
-- YouTube rate-limits or bot-detects automated requests; keeping yt-dlp updated is essential.
+- YouTube rate-limits or bot-detects automated requests; keeping yt-dlp updated and using browser cookies is essential.
 
 ---
 
