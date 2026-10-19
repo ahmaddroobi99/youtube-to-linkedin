@@ -1,0 +1,9 @@
+services:
+  - type: web
+    name: youtube-to-linkedin
+    env: docker
+    plan: free
+    dockerfilePath: ./Dockerfile
+    envVars:
+      - key: PORT
+        value: 8000
