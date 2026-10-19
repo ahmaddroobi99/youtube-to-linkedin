@@ -21,28 +21,48 @@ PORT = 8000
 
 
 def get_youtube_info(url: str) -> dict:
-    cmd = [
+    """Extract channel info using yt-dlp with better error reporting."""
+    base_cmd = [
         "yt-dlp",
         "--skip-download",
+        "--no-warnings",
+        "--ignore-errors",
         "--print",
         "%(channel)s|||%(uploader)s|||%(channel_id)s|||%(description)s|||%(webpage_url)s",
-        url,
     ]
-    try:
-        result = subprocess.run(cmd, capture_output=True, text=True, check=True, timeout=60)
-        parts = result.stdout.strip().split("|||")
-        if len(parts) < 5:
-            raise ValueError("Unexpected yt-dlp output")
-        return {
-            "channel": parts[0],
-            "uploader": parts[1],
-            "channel_id": parts[2],
-            "description": parts[3],
-            "webpage_url": parts[4],
-        }
-    except Exception as e:
-        print(f"[!] yt-dlp failed: {e}", file=sys.stderr)
-        return {"error": str(e)}
+
+    # Try with a few common workarounds for YouTube bot detection
+    attempts = [
+        base_cmd + [url],
+        base_cmd + ["--extractor-args", "youtube:player_client=web", url],
+        base_cmd + ["--extractor-args", "youtube:player_client=android", url],
+    ]
+
+    last_error = ""
+    for cmd in attempts:
+        try:
+            result = subprocess.run(cmd, capture_output=True, text=True, timeout=90)
+            if result.returncode == 0 and "|||" in result.stdout:
+                parts = result.stdout.strip().split("|||")
+                if len(parts) >= 5:
+                    return {
+                        "channel": parts[0] or None,
+                        "uploader": parts[1] or None,
+                        "channel_id": parts[2] or None,
+                        "description": parts[3] or "",
+                        "webpage_url": parts[4] or url,
+                    }
+            last_error = (result.stderr or result.stdout or "Unknown yt-dlp error").strip()[:500]
+        except subprocess.TimeoutExpired:
+            last_error = "yt-dlp timed out"
+        except Exception as e:
+            last_error = str(e)
+
+    return {
+        "error": "yt-dlp failed. Try updating it first: pip install -U yt-dlp",
+        "details": last_error,
+        "hint": "Common fixes: 1) pip install -U yt-dlp  2) Install Deno (JS runtime)  3) Try again later (rate limit)"
+    }
 
 
 def search_local(query: str) -> list:
@@ -96,7 +116,7 @@ def ask_ollama(text: str) -> dict:
 def extract(url: str) -> dict:
     info = get_youtube_info(url)
     if "error" in info:
-        return {"error": info["error"]}
+        return info
 
     result = {
         "channel": info.get("channel"),
