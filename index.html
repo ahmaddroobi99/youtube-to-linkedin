@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>YouTube → Creator Profile</title>
+  <style>
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      max-width: 720px;
+      margin: 40px auto;
+      padding: 0 20px;
+      background: #0f172a;
+      color: #e2e8f0;
+    }
+    h1 { font-size: 1.6rem; margin-bottom: 0.5rem; }
+    p.sub { color: #94a3b8; margin-top: 0; }
+    form { display: flex; gap: 8px; margin: 24px 0; }
+    input[type="text"] {
+      flex: 1;
+      padding: 12px 14px;
+      border-radius: 8px;
+      border: 1px solid #334155;
+      background: #1e293b;
+      color: #f1f5f9;
+      font-size: 1rem;
+    }
+    button {
+      padding: 12px 20px;
+      border-radius: 8px;
+      border: none;
+      background: #3b82f6;
+      color: white;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    button:hover { background: #2563eb; }
+    button:disabled { opacity: 0.6; cursor: not-allowed; }
+    #output {
+      background: #1e293b;
+      border: 1px solid #334155;
+      border-radius: 8px;
+      padding: 16px;
+      min-height: 120px;
+      white-space: pre-wrap;
+      font-family: ui-monospace, monospace;
+      font-size: 0.9rem;
+      overflow-x: auto;
+    }
+    .status { color: #94a3b8; margin-bottom: 8px; font-size: 0.9rem; }
+    a { color: #60a5fa; }
+  </style>
+</head>
+<body>
+  <h1>YouTube → Creator Profile</h1>
+  <p class="sub">Paste a YouTube video, channel, or playlist URL. Runs locally via the Python backend.</p>
+
+  <form id="form">
+    <input type="text" id="url" placeholder="https://www.youtube.com/watch?v=..." required>
+    <button type="submit" id="btn">Extract</button>
+  </form>
+
+  <div class="status" id="status"></div>
+  <div id="output">Waiting for input…</div>
+
+  <script>
+    const form = document.getElementById('form');
+    const urlInput = document.getElementById('url');
+    const btn = document.getElementById('btn');
+    const output = document.getElementById('output');
+    const status = document.getElementById('status');
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const url = urlInput.value.trim();
+      if (!url) return;
+
+      btn.disabled = true;
+      status.textContent = 'Extracting… (this can take 10–30 seconds)';
+      output.textContent = '';
+
+      try {
+        const res = await fetch('/extract', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ url })
+        });
+        const data = await res.json();
+        output.textContent = JSON.stringify(data, null, 2);
+        status.textContent = data.error ? 'Error' : 'Done';
+      } catch (err) {
+        output.textContent = 'Request failed: ' + err.message;
+        status.textContent = 'Network or server error';
+      } finally {
+        btn.disabled = false;
+      }
+    });
+  </script>
+</body>
+</html>
